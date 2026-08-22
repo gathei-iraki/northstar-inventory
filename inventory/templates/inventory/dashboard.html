@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Northstar Inventory</title>
+
+    <style>
+        body {
+            max-width: 1100px;
+            margin: 40px auto;
+            padding: 0 20px;
+            font-family: Arial, sans-serif;
+            background: #f5f7fa;
+            color: #172033;
+        }
+
+        h1, h2 {
+            color: #172033;
+        }
+
+        .card {
+            margin-bottom: 24px;
+            padding: 24px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+        }
+
+        .tables {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+            text-align: left;
+        }
+
+        input {
+            box-sizing: border-box;
+            padding: 8px;
+        }
+
+        button {
+            padding: 9px 14px;
+            border: 0;
+            border-radius: 5px;
+            background: #2463eb;
+            color: white;
+            cursor: pointer;
+        }
+
+        .sync-button {
+            background: #16803c;
+        }
+
+        .message {
+            padding: 12px;
+            margin-bottom: 12px;
+            border-radius: 5px;
+            background: #dff6e5;
+        }
+
+        .out-of-stock {
+            color: #b42318;
+            font-weight: bold;
+        }
+
+        .in-stock {
+            color: #16803c;
+            font-weight: bold;
+        }
+
+        @media (max-width: 800px) {
+            .tables {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Northstar Inventory Dashboard</h1>
+
+    {% for message in messages %}
+        <div class="message">
+            {{ message }}
+        </div>
+    {% endfor %}
+
+    <section class="card">
+        <h2>Add a warehouse product</h2>
+
+        <form
+            method="post"
+            action="{% url 'add-warehouse-product' %}"
+        >
+            {% csrf_token %}
+            {{ form.as_p }}
+
+            <button type="submit">
+                Add product
+            </button>
+        </form>
+    </section>
+
+    <section class="card">
+        <h2>Poll the warehouse</h2>
+
+        <p>
+            Click the button to copy the current warehouse stock
+            into the inventory cache.
+        </p>
+
+        <form
+            id="sync-form"
+            method="post"
+            action="{% url 'sync-inventory' %}"
+        >
+            {% csrf_token %}
+
+            <button type="submit" class="sync-button">
+                Sync Inventory Now
+            </button>
+        </form>
+    </section>
+
+    <div class="tables">
+        <section class="card">
+            <h2>Warehouse stock</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>SKU</th>
+                        <th>Name</th>
+                        <th>Quantity</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for product in warehouse_products %}
+                        <tr>
+                            <td>{{ product.sku }}</td>
+                            <td>{{ product.name }}</td>
+                            <td>
+                                <form
+                                    method="post"
+                                    action="{% url 'update-warehouse-quantity' product.id %}"
+                                >
+                                    {% csrf_token %}
+
+                                    <input
+                                        type="number"
+                                        name="quantity"
+                                        value="{{ product.quantity }}"
+                                        min="0"
+                                        required
+                                    >
+
+                                    <button type="submit">
+                                        Update
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="3">
+                                No warehouse products available.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        <section class="card">
+            <h2>Cached inventory</h2>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th>SKU</th>
+                        <th>Name</th>
+                        <th>Quantity</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+
+                <tbody>
+                    {% for item in inventory_items %}
+                        <tr>
+                            <td>{{ item.sku }}</td>
+                            <td>{{ item.name }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>
+                                {% if item.in_stock %}
+                                    <span class="in-stock">
+                                        In stock
+                                    </span>
+                                {% else %}
+                                    <span class="out-of-stock">
+                                        Out of stock
+                                    </span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="4">
+                                Inventory has not been synchronized.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <script>
+        const syncForm = document.getElementById("sync-form");
+
+        setTimeout(() => {
+            syncForm.requestSubmit();
+        }, 10000);
+    </script>
+</body>
+</html>
